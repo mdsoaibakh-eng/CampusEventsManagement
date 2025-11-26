@@ -1,16 +1,16 @@
-from curses import wrapper
 import os
 from flask import Flask, render_template, redirect, url_for, flash, request, session
 from dotenv import load_dotenv
 from models import db, Item, Admin
 from markupsafe import Markup, escape
+from functools import wraps
 
 load_dotenv()
+
 def login_required(f):
-    from functools import wraps
     @wraps(f)
     def wrapper(*args, **kwargs):
-        if 'admin_id' not in session:
+        if not session.get('admin_id'):
             flash('Please log in as admin.', 'error')
             return redirect(url_for('admin_login'))
         return f(*args, **kwargs)
@@ -71,7 +71,8 @@ def create_app():
             
             session["admin_id"] = admin.id
             flash("Logged in successfully.", "success")
-        return redirect(url_for("index"))
+            return redirect(url_for("index"))
+        return render_template("admin_login.html")
     
     @app.route("/admin/logout")
     def logout():
@@ -87,7 +88,6 @@ def create_app():
 
 
     @app.route('/')
-   # @login_required
     def index():
         page = request.args.get('page', 1, type=int)
         per_page = 6
