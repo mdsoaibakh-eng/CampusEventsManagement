@@ -1,7 +1,7 @@
 import os
-from flask import Flask, render_template, redirect, url_for, flash, request
+from flask import Flask, render_template, redirect, url_for, flash, request, session
 from dotenv import load_dotenv
-from models import db, Item
+from models import db, Item, Admin
 from markupsafe import Markup, escape
 
 load_dotenv()
@@ -22,6 +22,49 @@ def create_app():
         if s is None:
             return ''
         return Markup('<br>'.join(escape(s).splitlines()))
+# ##############################################
+#       ADMIN AUTHENTICATION
+#################################################
+@app.route("/admin/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        username = (request.form.get("username") or "").strip()
+        password = (request.form.get("password") or "").strip()
+
+    
+        if not username  or not password:
+            flash("Username and password are required.", "error")
+            return render_template("admin_register.html")
+        
+        if Admin .query.filter_by(username=username).first():
+            flash("Username already exists.", "error")
+            return render_template("admin_register.html")
+        
+        admin = Admin (username=username)
+        admin.set_password(password)
+        db.session.add(admin)
+        db.session.commit()
+        flash("Admin registered successfully.", "success")
+        return redirect(url_for("admin_login"))
+    return render_template("admin_register.html")
+
+@app.route("/admin/login", methods=["GET", "POST"])
+def admin_login():
+    if request.method == "POST":
+        username = (request.form.get("username") or "").strip()
+        password = (request.form.get("password") or "").strip()
+
+        admin = Admin .query.filter_by(username=username).first()
+        if admin is None or not admin.check_password(password):
+            flash("Invalid username or password.", "error")
+            return render_template("admin_login.html")
+        
+        session["admin_id"] = admin.id
+        flash("Logged in successfully.", "success")
+        return redirect(url_for("index"))
+
+
+
 
     @app.route('/')
     def index():
