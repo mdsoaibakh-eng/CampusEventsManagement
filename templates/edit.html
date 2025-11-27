@@ -1,59 +1,36 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Edit Item - {{ item.title }}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
-  <nav class="nav">
-    <div class="container nav-inner">
-      <a class="brand" href="{{ url_for('index') }}">FlaskCRUD</a>
-      <div><a class="btn btn-outline" href="{{ url_for('detail', item_id=item.id) }}">Back</a>
+{% extends "base.html" %}
 
-        {% if session.get('admin_id') %}
-    <a class="btn btn-outline" href="{{ url_for('create') }}">+ New Item</a>
-    <a class="btn btn-outline" href="{{ url_for('logout') }}">Logout</a>
-  {% else %}
-    <a class="btn btn-outline" href="{{ url_for('admin_login') }}">Login</a>
-  {% endif %}
-            </div>
+{% block title %}Edit Event - CampusEvents{% endblock %}
+
+{% block content %}
+<div class="form-container">
+  <h1>Edit Event</h1>
+  <form method="post">
+    <div class="form-group">
+      <label for="title">Event Title</label>
+      <input type="text" name="title" id="title" value="{{ event.title }}" required class="form-control">
     </div>
-  </nav>
 
-  <main class="container">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <div class="flashes">
-          {% for category, msg in messages %}
-            <div class="flash {{ category }}">{{ msg }}</div>
-          {% endfor %}
-        </div>
-      {% endif %}
-    {% endwith %}
+    <div class="form-group">
+      <label for="date">Date & Time</label>
+      <input type="datetime-local" name="date" id="date" value="{{ event.date.strftime('%Y-%m-%dT%H:%M') }}" required
+        class="form-control">
+    </div>
 
-    <h1>Edit Item</h1>
-    <form method="post" action="{{ url_for('edit', item_id=item.id) }}">
-      <div class="form-row">
-        <label for="title">Title</label><br>
-        <input id="title" name="title" class="input" value="{{ title|e }}">
-      </div>
+    <div class="form-group">
+      <label for="location">Location</label>
+      <input type="text" name="location" id="location" value="{{ event.location }}" required class="form-control">
+    </div>
 
-      <div class="form-row">
-        <label for="description">Description</label><br>
-        <textarea id="description" name="description" class="textarea">{{ description|e }}</textarea>
-      </div>
+    <div class="form-group">
+      <label for="description">Description</label>
+      <textarea name="description" id="description" rows="5" class="form-control">{{ event.description }}</textarea>
+    </div>
 
-      <div class="form-row">
-        <button type="submit" class="btn">Save</button>
-        <a class="btn btn-outline" href="{{ url_for('detail', item_id=item.id) }}">Cancel</a>
-      </div>
-    </form>
-  </main>
-
-  <footer class="footer">
-    <div class="container">© Demo CRUD</div>
-  </footer>
-</body>
-</html>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Save Changes</button>
+      <a href="{{ url_for('detail', event_id=event.id) }}" class="btn btn-text">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

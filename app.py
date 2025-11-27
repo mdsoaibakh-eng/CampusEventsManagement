@@ -1,7 +1,7 @@
 import os
 from flask import Flask, render_template, redirect, url_for, flash, request, session
 from dotenv import load_dotenv
-from models import db, Item, Admin, Student, Application
+from models import db, Event, Admin, Student, Registration
 from markupsafe import Markup, escape
 from werkzeug.utils import secure_filename
 from datetime import datetime
@@ -44,10 +44,6 @@ def create_app():
     app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-    UPLOAD_FOLDER = "static/uploads"
-    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-    ALLOWED_EXTENSIONS = {"pdf", "doc", "docx"}
-
     db.init_app(app)
 
     # Create tables
@@ -64,7 +60,7 @@ def create_app():
         return Markup("<br>".join(escape(s).splitlines()))
 
     # ===========================
-    # ADMIN AUTH
+    # ADMIN AUTHINCATION
     # ===========================
 
     @app.route("/admin/register", methods=["GET", "POST"])
@@ -118,8 +114,9 @@ def create_app():
         flash("Logged out.", "info")
         return redirect(url_for("index"))
 
-    # STUDENT AUTH
-    # ===========================
+    # ###############################################################
+    # STUDENT AUTHINCATION
+    # ######################################################################
 
     @app.route("/student/register", methods=["GET", "POST"])
     def student_register():
@@ -173,99 +170,90 @@ def create_app():
         return redirect(url_for("index"))
 
 
-    # ===========================
-    # FILE UPLOAD (RESUME)
-    # ===========================
+    # #####################################################
+    # EVENT REGISTRATION
+    # ########################################################
 
-    def allowed_file(filename):
-        return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
-
-    @app.route("/student/upload", methods=["GET", "POST"])
+    @app.route("/student/register_event/<int:event_id>", methods=["POST"])
     @student_login_required
-    def upload_resume():
+    def register_event(event_id):
         student = Student.query.get(session["student_id"])
+        event = Event.query.get_or_404(event_id)
 
-        if request.method == "POST":
-            if "resume" not in request.files:
-                flash("No file part.", "error")
-                return redirect(request.url)
+        # Check if already registered
+        existing_reg = Registration.query.filter_by(student_id=student.id, event_id=event.id).first()
+        if existing_reg:
+            flash("You are already registered for this event.", "info")
+            return redirect(url_for("detail", event_id=event.id))
 
-            file = request.files["resume"]
+        registration = Registration(student_id=student.id, event_id=event.id)
+        db.session.add(registration)
+        db.session.commit()
 
-            if file.filename == "":
-                flash("No selected file.", "error")
-                return redirect(request.url)
-
-            if file and allowed_file(file.filename):
-                filename = secure_filename(file.filename)
-                path = os.path.join(UPLOAD_FOLDER, filename)
-                
-                file.save(path)
-
-                app_record = Application(student_id=student.id, resume_filename=filename)
-                db.session.add(app_record)
-                db.session.commit()
-
-                flash("Resume uploaded successfully.", "success")
-                return redirect(url_for("student_dashboard"))
-
-        return render_template("upload_resume.html", student=student)
+        flash("Registered for event successfully.", "success")
+        return redirect(url_for("student_dashboard"))
 
 
-    # ===========================
+    # ################################################
     # STUDENT DASHBOARD
-    # ===========================
+    # ####################################################
 
     @app.route("/student/dashboard")
     @student_login_required
     def student_dashboard():
         student = Student.query.get(session["student_id"])
-        applications = student.applications
-        return render_template("student_dashboard.html", student=student, applications=applications)
+        registrations = student.registrations
+        return render_template("student_dashboard.html", student=student, registrations=registrations)
 
 
-    # ===========================
-    # Admin: View & Approve Applications
-    # ===========================
+    # ##########################################
+    # Admin: View & Approve Registrations
+    # ################################################
 
-    @app.route("/admin/applications")
+    @app.route("/admin/registrations")
     @admin_login_required
-    def admin_view_applications():
-        applications = Application.query.order_by(Application.created_at.desc()).all()
-        return render_template("admin_applications.html", applications=applications)
+    def admin_view_registrations():
+        registrations = Registration.query.order_by(Registration.created_at.desc()).all()
+        return render_template("admin_registrations.html", registrations=registrations)
 
-    @app.route("/admin/applications/approve/<int:app_id>", methods=["POST"])
+    @app.route("/admin/registrations/approve/<int:reg_id>", methods=["POST"])
     @admin_login_required
-    def approve_application(app_id):
-        app_record = Application.query.get_or_404(app_id)
-        app_record.status = "Approved"
-        app_record.approved_at = datetime.utcnow()
+    def approve_registration(reg_id):
+        reg_record = Registration.query.get_or_404(reg_id)
+        reg_record.status = "Approved"
+        reg_record.approved_at = datetime.utcnow()
         db.session.commit()
 
-        flash("Application approved.", "success")
-        return redirect(url_for("admin_view_applications"))
+        flash("Registration approved.", "success")
+        return redirect(url_for("admin_view_registrations"))
 
 
-    # ===========================
-    # PUBLIC ITEM VIEWS
-    # ===========================
+    # ##########################################
+    # PUBLIC EVENT VIEWS
+    # ################################################
 
     @app.route("/")
     def index():
         page = request.args.get("page", 1, type=int)
         per_page = 6
-        items = Item.query.order_by(Item.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
-        return render_template("list.html", items=items)
+        events = Event.query.order_by(Event.date.asc()).paginate(page=page, per_page=per_page, error_out=False)
+        return render_template("list.html", events=events)
 
-    @app.route("/item/<int:item_id>")
-    def detail(item_id):
-        item = Item.query.get_or_404(item_id)
-        return render_template("detail.html", item=item)
+    @app.route("/event/<int:event_id>")
+    def detail(event_id):
+        event = Event.query.get_or_404(event_id)
+        is_registered = False
+        if session.get("student_id"):
+            student_id = session.get("student_id")
+            if Registration.query.filter_by(student_id=student_id, event_id=event.id).first():
+                is_registered = True
+        
+        return render_template("detail.html", event=event, is_registered=is_registered)
 
 
-    # ===========================
-    # ADMIN CRUD
-    # ===========================
+    # #######################################
+    # ADMIN CRUD (EVENTS)
+    # ############################################
 
     @app.route("/create", methods=["GET", "POST"])
     @admin_login_required
@@ -273,50 +261,68 @@ def create_app():
         if request.method == "POST":
             title = (request.form.get("title") or "").strip()
             description = (request.form.get("description") or "").strip() or None
+            location = (request.form.get("location") or "").strip()
+            date_str = request.form.get("date")
 
-            if not title:
-                flash("Title is required.", "error")
-                return render_template("create.html", title=title, description=description)
+            if not title or not location or not date_str:
+                flash("Title, Location and Date are required.", "error")
+                return render_template("create.html", title=title, description=description, location=location, date=date_str)
 
-            item = Item(title=title, description=description)
-            db.session.add(item)
+            try:
+                event_date = datetime.strptime(date_str, '%Y-%m-%dT%H:%M')
+            except ValueError:
+                flash("Invalid date format.", "error")
+                return render_template("create.html", title=title, description=description, location=location, date=date_str)
+
+            event = Event(title=title, description=description, location=location, date=event_date)
+            db.session.add(event)
             db.session.commit()
 
-            flash("Item created successfully.", "success")
+            flash("Event created successfully.", "success")
             return redirect(url_for("index"))
 
-        return render_template("create.html", title="", description="")
+        return render_template("create.html", title="", description="", location="", date="")
 
-    @app.route("/edit/<int:item_id>", methods=["GET", "POST"])
+    @app.route("/edit/<int:event_id>", methods=["GET", "POST"])
     @admin_login_required
-    def edit(item_id):
-        item = Item.query.get_or_404(item_id)
+    def edit(event_id):
+        event = Event.query.get_or_404(event_id)
 
         if request.method == "POST":
             title = (request.form.get("title") or "").strip()
             description = (request.form.get("description") or "").strip() or None
+            location = (request.form.get("location") or "").strip()
+            date_str = request.form.get("date")
 
-            if not title:
-                flash("Title is required.", "error")
-                return render_template("edit.html", item=item, title=title, description=description)
+            if not title or not location or not date_str:
+                flash("Title, Location and Date are required.", "error")
+                return render_template("edit.html", event=event)
 
-            item.title = title
-            item.description = description
+            try:
+                event_date = datetime.strptime(date_str, '%Y-%m-%dT%H:%M')
+            except ValueError:
+                flash("Invalid date format.", "error")
+                return render_template("edit.html", event=event)
+
+            event.title = title
+            event.description = description
+            event.location = location
+            event.date = event_date
 
             db.session.commit()
 
-            flash("Item updated.", "success")
-            return redirect(url_for("detail", item_id=item.id))
+            flash("Event updated.", "success")
+            return redirect(url_for("detail", event_id=event.id))
 
-        return render_template("edit.html", item=item, title=item.title, description=item.description or "")
+        return render_template("edit.html", event=event)
 
-    @app.route("/delete/<int:item_id>", methods=["POST"])
+    @app.route("/delete/<int:event_id>", methods=["POST"])
     @admin_login_required
-    def delete(item_id):
-        item = Item.query.get_or_404(item_id)
-        db.session.delete(item)
+    def delete(event_id):
+        event = Event.query.get_or_404(event_id)
+        db.session.delete(event)
         db.session.commit()
-        flash("Item deleted.", "info")
+        flash("Event deleted.", "info")
         return redirect(url_for("index"))
 
     @app.errorhandler(404)

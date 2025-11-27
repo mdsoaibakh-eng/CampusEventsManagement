@@ -1,47 +1,23 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <title>Student Login</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
+{% extends "base.html" %}
 
-<body>
+{% block title %}Student Login - CampusEvents{% endblock %}
 
-<nav class="nav">
-  <div class="container nav-inner">
-    <a class="brand" href="{{ url_for('index') }}">FlaskCRUD</a>
-  </div>
-</nav>
-
-<main class="container">
-<h1>Student Login</h1>
-
-{% with messages = get_flashed_messages(with_categories=true) %}
-{% if messages %}
-  <div class="flashes">
-    {% for category, msg in messages %}
-      <div class="flash {{ category }}">{{ msg }}</div>
-    {% endfor %}
-  </div>
-{% endif %}
-{% endwith %}
-
-<form method="post">
-  <div class="form-row">
-    <label>Username</label>
-    <input class="input" name="username">
-  </div>
-
-  <div class="form-row">
-    <label>Password</label>
-    <input type="password" class="input" name="password">
-  </div>
-
-  <button class="btn">Login</button>
-  <a href="{{ url_for('student_register') }}" class="btn btn-outline">Register</a>
-</form>
-</main>
-
-</body>
-</html>
+{% block content %}
+<div class="auth-container">
+  <h1>Student Login</h1>
+  <form method="post">
+    <div class="form-group">
+      <label for="username">Username</label>
+      <input type="text" name="username" id="username" required class="form-control">
+    </div>
+    <div class="form-group">
+      <label for="password">Password</label>
+      <input type="password" name="password" id="password" required class="form-control">
+    </div>
+    <button type="submit" class="btn btn-primary btn-block">Login</button>
+  </form>
+  <p class="auth-footer">
+    New student? <a href="{{ url_for('student_register') }}">Create an account</a>
+  </p>
+</div>
+{% endblock %}
