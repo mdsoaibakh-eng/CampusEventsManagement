@@ -80,3 +80,9 @@ A Flask-based web application for managing college events, allowing administrato
 - `models.py`: Database models (Admin, Student, Event, Registration).
 - `templates/`: HTML templates for the application.
 - `static/`: Static files (CSS, JS, Images).
+
+
+<img width="1366" height="768" alt="Screenshot (344)" src="https://github.com/user-attachments/assets/ec76ed5a-9f10-4e0b-8e27-92d36f4dce07" /><img width="1366" height="768" alt="Screenshot (351)" src="https://github.com/user-attachments/assets/b9cf1d5e-0309-49af-8d5d-bbc0b16d6df0" />
+
+
+
