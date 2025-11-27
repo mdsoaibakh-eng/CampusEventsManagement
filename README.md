@@ -28,8 +28,8 @@ A Flask-based web application for managing college events, allowing administrato
 
 1.  **Clone the repository**:
     ```bash
-    git clone 
-    cd 
+    git clone https://github.com/mdsoaibakh-eng/CampusEventsManagement.git
+    cd CampusEventsManagement
     ```
 
 2.  **Create a virtual environment** (optional but recommended):
